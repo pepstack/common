@@ -30,7 +30,7 @@
  * @author     Liang Zhang <350137278@qq.com>
  * @version    0.0.10
  * @create     2017-08-28 11:12:10
- * @update     2020-12-12 22:55:37
+ * @update     2021-01-17 22:55:37
  */
 #ifndef _MISC_H_
 #define _MISC_H_
@@ -49,6 +49,11 @@ extern "C"
   typedef HANDLE filehandle_t;
 
 # define filehandle_invalid INVALID_HANDLE_VALUE
+
+# define fseek_pos_set    ((int)FILE_BEGIN)
+# define fseek_pos_cur    ((int)FILE_CURRENT)
+# define fseek_pos_end    ((int)FILE_END)
+
 # define getprocessid()  ((int)GetCurrentProcessId())
 # define getthreadid()   ((int) GetCurrentThreadId())
 
@@ -100,6 +105,9 @@ static void sleep_usec(int microseconds)
 
 #else /* non-windows: Linux or Cygwin */
 
+/* See feature_test_macros(7) */
+# define _LARGEFILE64_SOURCE
+
 # include <sys/types.h>
 # include <sys/stat.h>
 # include <sys/time.h>
@@ -121,12 +129,16 @@ NOWARNING_UNUSED(static) pid_t getthreadid(void)
 {
     return syscall(SYS_gettid);
 }
-# endif 
+# endif
 
 # define getprocessid()   ((int)getpid())
 
 typedef int filehandle_t;
 # define filehandle_invalid ((filehandle_t)(-1))
+
+# define fseek_pos_set    ((int)SEEK_SET)
+# define fseek_pos_cur    ((int)SEEK_CUR)
+# define fseek_pos_end    ((int)SEEK_END)
 
 # define _TIMESPEC_DEFINED
 
@@ -240,7 +252,7 @@ void getnowtimeofday(struct timespec *now)
     GetSystemTimeAsFileTime(&tmfile);
 
     _100nanos.LowPart   = tmfile.dwLowDateTime;
-    _100nanos.HighPart  = tmfile.dwHighDateTime; 
+    _100nanos.HighPart  = tmfile.dwHighDateTime;
     _100nanos.QuadPart -= 0x19DB1DED53E8000;
 
     /* Convert 100ns units to seconds */
@@ -467,6 +479,14 @@ filehandle_t file_open_read(const char *pathname)
     return hf;
 }
 
+
+NOWARNING_UNUSED(static)
+filehandle_t file_write_new(const char *pathname)
+{
+    return file_create(pathname, GENERIC_WRITE, FILE_ATTRIBUTE_NORMAL);
+}
+
+
 NOWARNING_UNUSED(static)
 int file_close(filehandle_t *phf)
 {
@@ -483,6 +503,34 @@ int file_close(filehandle_t *phf)
     }
     return (-1);
 }
+
+
+NOWARNING_UNUSED(static)
+sb8 file_seek(filehandle_t hf, sb8 distance, int fseekpos)
+{
+    LARGE_INTEGER li;
+    li.QuadPart = distance;
+    if (SetFilePointerEx(hf, li, &li, fseekpos)) {
+        return (sb8)li.QuadPart;
+    }
+    /* error */
+    return (sb8)(-1);
+}
+
+
+NOWARNING_UNUSED(static)
+sb8 file_size(filehandle_t hf)
+{
+    LARGE_INTEGER li;
+    if (GetFileSizeEx(hf, &li)) {
+        /* success */
+        return (sb8)li.QuadPart;
+    }
+
+    /* error */
+    return (sb8)(-1);
+}
+
 
 NOWARNING_UNUSED(static)
 int file_readbytes(filehandle_t hf, char *bytesbuf, ub4 sizebuf)
@@ -583,6 +631,14 @@ filehandle_t file_open_read(const char *pathname)
     return fd;
 }
 
+
+NOWARNING_UNUSED(static)
+filehandle_t file_write_new(const char *pathname)
+{
+    return file_create(toxmlfile, O_WRONLY, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH);
+}
+
+
 NOWARNING_UNUSED(static)
 int file_close(filehandle_t *phf)
 {
@@ -597,6 +653,14 @@ int file_close(filehandle_t *phf)
     }
     return (-1);
 }
+
+
+NOWARNING_UNUSED(static)
+sb8 file_seek(filehandle_t hf, sb8 distance, int fseekpos)
+{
+    return (sb8) lseek64(hf, (off64_t)sb8, fseekpos);
+}
+
 
 NOWARNING_UNUSED(static)
 int file_readbytes(filehandle_t hf, char *bytesbuf, ub4 sizebuf)

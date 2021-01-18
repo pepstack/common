@@ -30,7 +30,7 @@
  * @author     Liang Zhang <350137278@qq.com>
  * @version    0.0.2
  * @create     2020-12-09 21:12:10
- * @update     2020-12-09 23:12:10
+ * @update     2021-01-14 14:23:00
  */
 #ifndef _REFC_OBJECT_H_
 #define _REFC_OBJECT_H_
@@ -44,6 +44,8 @@ extern "C"
 #include "uatomic.h"
 #include "thread_rwlock.h"
 
+#define REFCOBJ_ALIGN_SIZE(sz)   ((((size_t)(sz) + sizeof(void*) - sizeof(char))/sizeof(void*)) * sizeof(void*))
+
 
 typedef struct
 {
@@ -55,9 +57,9 @@ typedef struct
 } refc_object_t, *refc_object;
 
 
-AE_FORCEINLINE void * refc_object_new (int type, size_t elem, void (*finalize)(void *))
+AE_FORCEINLINE void * refc_object_new (int type, size_t elemsz, void (*finalize)(void *))
 {
-    refc_object p = (refc_object) mem_alloc_zero(1, sizeof(*p) + elem);
+    refc_object p = (refc_object) mem_alloc_zero(1, REFCOBJ_ALIGN_SIZE(sizeof(*p) + elemsz));
     p->__refc = 1;
     p->__final = finalize;
     p->type = type;

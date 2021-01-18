@@ -29,7 +29,7 @@
  *
  * Usage:
  *   uatomic_int  i;
- *   uatomic_int_set(&i, 0); 
+ *   uatomic_int_set(&i, 0);
  *   uatomic_int_add(&i);
  *
  * @author     Liang Zhang <350137278@qq.com>
